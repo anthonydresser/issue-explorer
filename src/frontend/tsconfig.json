@@ -5,12 +5,22 @@
         "noImplicitReturns": true,
         "noImplicitThis": true,
         "alwaysStrict": true,
+        "noUnusedLocals": true,
         "sourceMap": true,
         "target": "esnext",
         "module": "esnext",
         "moduleResolution": "node",
         "lib": ["dom"],
         "jsx": "react",
-        "jsxFactory": "h"
+        "jsxFactory": "h",
+        "baseUrl": ".",
+        "paths": {
+            "/preact": [
+                "../../node_modules/preact"
+            ],
+            "/d3": [
+                "../../node_modules/@types/d3"
+            ]
+        }
     }
 }

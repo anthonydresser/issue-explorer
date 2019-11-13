@@ -21,6 +21,9 @@ server.use(express.static(frontEnd, { extensions: ["mjs"] }));
 server.get("/preact", (req, res) =>
   res.sendFile(path.join(nodeModules, "preact", "dist", "preact.module.js"))
 );
+server.get("/d3", (req, res) =>
+  res.sendFile(path.join(nodeModules, "d3", "dist", "d3.min.js"))
+);
 server.get("/", (req, res) => res.sendFile(index));
 
 server.listen(port, () => console.log("server listening on port", port));

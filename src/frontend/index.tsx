@@ -1,4 +1,4 @@
-import { h, render } from 'preact'; 
-import './text';
+import { h, render } from '/preact'; 
+import { IssueExplorer } from './issueExplorer'
 
-render(<div>Hello World!</div>, document.getElementById('app')!);
+render(<IssueExplorer />, document.body);
