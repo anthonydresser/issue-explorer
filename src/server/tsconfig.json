@@ -1,0 +1,13 @@
+{
+    "compilerOptions": {
+        "strict": true,
+        "noImplicitAny": true,
+        "noImplicitReturns": true,
+        "noImplicitThis": true,
+        "alwaysStrict": true,
+        "sourceMap": true,
+        "target": "esnext",
+        "module": "esnext",
+        "allowSyntheticDefaultImports": true
+    }
+}
