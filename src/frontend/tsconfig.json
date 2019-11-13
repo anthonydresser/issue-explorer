@@ -11,12 +11,6 @@
         "moduleResolution": "node",
         "lib": ["dom"],
         "jsx": "react",
-        "jsxFactory": "h",
-        "baseUrl": ".",
-        "paths": {
-            "/preact": [
-                "./../../node_modules/preact"
-            ]
-        }
+        "jsxFactory": "h"
     }
 }
