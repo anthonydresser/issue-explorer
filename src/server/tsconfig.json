@@ -5,9 +5,11 @@
         "noImplicitReturns": true,
         "noImplicitThis": true,
         "alwaysStrict": true,
+        "noUnusedLocals": true,
         "sourceMap": true,
         "target": "esnext",
         "module": "esnext",
+        "moduleResolution": "node",
         "allowSyntheticDefaultImports": true
     }
 }
