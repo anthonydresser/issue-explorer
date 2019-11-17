@@ -1,4 +1,4 @@
-import { h, render } from '/preact';
-import { IssueExplorer } from './issueExplorer'
+import { h, render } from 'https://unpkg.com/preact?module';
+import { IssueExplorer } from './issueExplorer/issueExplorer'
 
 render(<IssueExplorer />, document.body);

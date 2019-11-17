@@ -12,19 +12,27 @@
   },
   "dependencies": {
     "@octokit/rest": "^16.35.0",
-    "d3": "^5.12.0",
+    "cookie-parser": "^1.4.4",
     "express": "^4.17.1",
-    "preact": "^10.0.5"
+    "request": "^2.88.0"
   },
   "devDependencies": {
+    "@types/cookie-parser": "^1.4.2",
     "@types/d3": "^5.7.2",
     "@types/express": "^4.17.2",
+    "@types/request": "^2.48.3",
+    "event-stream": "^4.0.1",
     "gulp": "^4.0.2",
+    "gulp-filter": "^6.0.0",
     "gulp-rename": "^1.4.0",
+    "gulp-sass": "^4.0.2",
     "gulp-sourcemaps": "^2.6.5",
+    "gulp-tslint": "^8.1.4",
     "gulp-typescript": "^5.0.1",
     "merge-stream": "^2.0.0",
+    "preact": "^10.0.5",
     "rimraf": "^3.0.0",
+    "tslint": "^5.20.1",
     "typescript": "^3.8.0-dev.20191112"
   }
 }

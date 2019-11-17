@@ -1,0 +1,13 @@
+.label-list {
+    display: flex;
+    flex-flow: wrap;
+    user-select: none;
+    .label {
+        box-shadow: 0 0 3px black;
+        padding: 0 2px;
+        border-radius: 5px;
+        height: 1.5em;
+        margin: 5px;
+        cursor: pointer;
+    }
+}

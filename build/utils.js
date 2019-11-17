@@ -26,5 +26,4 @@ function rimraf(dir) {
 	result.taskName = `clean-${path.basename(dir).toLowerCase()}`;
 	return result;
 }
-
 exports.rimraf = rimraf;

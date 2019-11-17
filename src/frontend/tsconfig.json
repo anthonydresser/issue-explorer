@@ -16,10 +16,10 @@
         "jsxFactory": "h",
         "baseUrl": ".",
         "paths": {
-            "/preact": [
+            "https://unpkg.com/preact?module": [
                 "../../node_modules/preact"
             ],
-            "/d3": [
+            "https://unpkg.com/d3?module": [
                 "../../node_modules/@types/d3"
             ]
         }

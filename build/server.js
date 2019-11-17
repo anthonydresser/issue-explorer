@@ -16,7 +16,7 @@ function createServer() {
             console.log('Only one server active at a time');
             return Promise.resolve();
         }
-        activeServer = cp.spawn("node", ["--experimental-modules", INDEX], { stdio: 'inherit' });
+        activeServer = cp.spawn("node", ["--experimental-modules", "--inspect", INDEX], { stdio: 'inherit' });
         return Promise.resolve();
     }
 
