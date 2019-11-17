@@ -36,7 +36,14 @@ class Github {
     }
 
     private async getIssues(req: Request<{ owner: string, name: string }>, res: Response, api: octokit): Promise<void> {
-        throw 'not implemented';
+        const { owner, name } = req.params;
+        const options = api.search.issuesAndPullRequests.endpoint.merge({
+            q: `repo:${owner}/${name} is:issue is:open`,
+            per_page: 100,
+        });
+        const results = await api.paginate(options);
+
+        res.send(results as api.getIssuesResponse);
     }
 
     private async getLabels(req: Request<{ owner: string, name: string }>, res: Response, api: octokit): Promise<void> {

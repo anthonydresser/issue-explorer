@@ -12,14 +12,23 @@ export interface LabelListProps {
 }
 
 export interface LabelListState {
-    repos: Array<{ name: string, value: string }>;
+    groups: Array<Array<string>>;
 }
 
 styles('./labelList/labelList');
 export class LabelList extends Component<LabelListProps, LabelListState> {
+    constructor(props: LabelListProps) {
+        super(props);
+        this.state = {
+            groups: []
+        }
+    }
     render(): ComponentChild {
         return (
-            <div class="label-list">{this.props.labels.map(l => (<span class="label" style={{ 'background-color': '#' + l.color }}>{l.name}</span>))}</div>
+            <div>
+                <div class="label-list">{this.props.labels.map(l => (<span class="label" style={{ 'background-color': '#' + l.color }}>{l.name}</span>))}</div>
+                {this.state.groups}
+            </div>
         );
     }
 }

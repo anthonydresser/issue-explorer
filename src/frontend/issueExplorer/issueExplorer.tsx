@@ -1,6 +1,6 @@
 import { h, Component, ComponentChild } from 'https://unpkg.com/preact?module';
 import { styles } from '../common/css/cssDecorator';
-import { Chart } from '../common/chart/chart'
+import { Chart, Entry } from '../common/chart/chart'
 import { Dropdown, Item } from '../common/dropdown/dropdown';
 import { api } from '../../api';
 import { LabelList, Label } from '../labelList/labelList';
@@ -16,6 +16,8 @@ export interface IssueExplorerState {
     tags: { name: string; date: string }[];
     selectedRepo?: { owner: string; name: string };
     showTags?: boolean;
+    data: Entry[];
+    groups: string[][];
 }
 
 styles('./issueExplorer/issueExplorer');
@@ -26,6 +28,8 @@ export class IssueExplorer extends Component<IssueExplorerProps, IssueExplorerSt
             repos: [],
             labels: [],
             tags: [],
+            data: [],
+            groups: [['all']],
             showTags: false
         };
     }
@@ -43,6 +47,17 @@ export class IssueExplorer extends Component<IssueExplorerProps, IssueExplorerSt
         (async () => {
             const labels: api.getLabelsResponse = await (await fetch(`/api/repo/${owner}/${name}/labels`)).json();
             this.setState({ labels });
+        })();
+        (async () => {
+            const data: Entry[] = [];
+            await Promise.all(this.state.groups.map(async g => {
+                if (g.join('.') === 'all') {
+                    const issues: api.getIssuesResponse = await (await fetch(`/api/repo/${owner}/${name}/issues`)).json();
+                    console.log('issues', issues);
+                    data.push({ label: 'all', value: issues.length });
+                }
+            }));
+            this.setState({ data });
         })();
     }
 
@@ -78,7 +93,7 @@ export class IssueExplorer extends Component<IssueExplorerProps, IssueExplorerSt
                 <Checkbox onChange={e => this.showTags(e)} checked={this.state.showTags} name="Show Releases" />
                 <LabelList labels={this.state.labels} />
                 <LabelList labels={this.state.tags.map(t => ({ name: t.name + t.date, color: 'ffffff'}))} />
-                <Chart />
+                <Chart data={this.state.data}/>
             </div>
         );
     }
