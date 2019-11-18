@@ -17,8 +17,10 @@ export interface IssueExplorerState {
     selectedRepo?: { owner: string; name: string };
     showTags?: boolean;
     data: Entry[];
-    groups: string[][];
+    groups: Array<Array<Label>>;
 }
+
+const allGroups = [[{ name: 'all', color: 'ffa500' }]];
 
 styles('./issueExplorer/issueExplorer');
 export class IssueExplorer extends Component<IssueExplorerProps, IssueExplorerState> {
@@ -29,7 +31,7 @@ export class IssueExplorer extends Component<IssueExplorerProps, IssueExplorerSt
             labels: [],
             tags: [],
             data: [],
-            groups: [['all']],
+            groups: allGroups,
             showTags: false
         };
     }
@@ -48,17 +50,33 @@ export class IssueExplorer extends Component<IssueExplorerProps, IssueExplorerSt
             const labels: api.getLabelsResponse = await (await fetch(`/api/repo/${owner}/${name}/labels`)).json();
             this.setState({ labels });
         })();
-        (async () => {
-            const data: Entry[] = [];
-            await Promise.all(this.state.groups.map(async g => {
-                if (g.join('.') === 'all') {
-                    const issues: api.getIssuesResponse = await (await fetch(`/api/repo/${owner}/${name}/issues`)).json();
-                    console.log('issues', issues);
-                    data.push({ label: 'all', value: issues.length });
-                }
-            }));
-            this.setState({ data });
-        })();
+        this.updateIssues(this.state.groups, { owner, name } );
+    }
+
+    labelGroupsChanged(groups: Array<Array<Label>>) {
+        if (groups.length === 0 || groups[0].length === 0) {
+            groups = allGroups
+        }
+        this.setState({ groups });
+        if (this.state.selectedRepo) {
+            this.updateIssues(groups, this.state.selectedRepo);
+        }
+    }
+
+    async updateIssues(groups: Array<Array<Label>>, repo: { owner: string; name: string }): Promise<void> {
+        const { owner, name } = repo;
+        const data: Entry[] = [];
+        await Promise.all(groups.map(async g => {
+            if (g.map(g => g.name).join('.') === 'all') {
+                const issues: api.getIssuesResponse = await (await fetch(`/api/repo/${owner}/${name}/issues`)).json();
+                data.push({ label: 'all', value: issues.count, color: g[0].color });
+            } else {
+                const labels = encodeURIComponent(g.map(g => g.name).join(','));
+                const issues: api.getIssuesResponse = await (await fetch(`/api/repo/${owner}/${name}/issues?labels=${labels}`)).json();
+                data.push({ label: g.map(g => g.name).join(','), value: issues.count, color: g[0].color });
+            }
+        }));
+        this.setState({ data });
     }
 
     showTags(doShow: boolean): void {
@@ -91,7 +109,7 @@ export class IssueExplorer extends Component<IssueExplorerProps, IssueExplorerSt
                 <Dropdown items={this.state.repos.map(r => ({ name: `${r.owner}/${r.name}`, value: `${r.owner}/${r.name}` }))} onChange={e => this.repoSelected(e)} />
                 <input onKeyPress={e => this.onInputKeyPress(e)} />
                 <Checkbox onChange={e => this.showTags(e)} checked={this.state.showTags} name="Show Releases" />
-                <LabelList labels={this.state.labels} />
+                <LabelList labels={this.state.labels} onGroupChange={g => this.labelGroupsChanged(g)}/>
                 <LabelList labels={this.state.tags.map(t => ({ name: t.name + t.date, color: 'ffffff'}))} />
                 <Chart data={this.state.data}/>
             </div>

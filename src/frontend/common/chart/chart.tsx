@@ -3,7 +3,9 @@ import * as d3 from 'https://unpkg.com/d3?module';
 import { styles } from "../css/cssDecorator";
 
 export interface Entry {
-    label: string; value: number;
+    label: string;
+    value: number;
+    color?: string;
 }
 export interface ChartProps {
     data: Entry[];
@@ -29,6 +31,7 @@ export class Chart extends Component<ChartProps, ChartState> {
         const height = 600 - 2 * margin;
 
         const svg = d3.select('#' + this.id);
+        svg.selectAll("*").remove();
         const chart = svg.append('g')
             .attr('transform', `translate(${margin}, ${margin})`);
 
@@ -54,8 +57,9 @@ export class Chart extends Component<ChartProps, ChartState> {
             .append('rect')
             .attr('x', (s: Entry) => xScale(s.label) || null)
             .attr('y', (s: Entry) => yScale(s.value))
-            .attr('height', (s: any) => height - yScale(s.value))
-            .attr('width', xScale.bandwidth());
+            .attr('height', (s: Entry) => height - yScale(s.value))
+            .attr('width', xScale.bandwidth())
+            .attr('fill', (s: Entry) => s.color ? '#' + s.color : 'black');
     }
 
     render(): ComponentChild {

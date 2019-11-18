@@ -3,7 +3,7 @@ export namespace api {
 
     export type getLabelsResponse = { name: string, color: string }[];
 
-    export type getTagsResponse = { name: string, date: string }[]
+    export type getTagsResponse = { name: string, date: string }[];
 
-    export type getIssuesResponse = { }[]
+    export type getIssuesResponse = { count: number };
 }
