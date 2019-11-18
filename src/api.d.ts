@@ -6,4 +6,6 @@ export namespace api {
     export type getTagsResponse = { name: string, date: string }[];
 
     export type getIssuesResponse = { count: number };
+
+    export type getIssuesTimelineResponse = { time: string, count: number }[];
 }

@@ -25,7 +25,8 @@ type RestApiAcceptor<T extends ParamsDictionary> = (req: Request<T>, res: Respon
 class Github {
     constructor(service: Express) {
         service.get('/api/repos', (req, res) => this.getApi(req, res, ApiType.rest, (req, res, api) => this.getRepos(req, res, api)));
-        service.get<{ owner: string, name: string, labels: string }>('/api/repo/:owner/:name/issues', (req, res) => this.getApi(req, res, ApiType.graph, (req, res, api) => this.getIssues(req, res, api)));
+        service.get<{ owner: string, name: string }>('/api/repo/:owner/:name/issues', (req, res) => this.getApi(req, res, ApiType.graph, (req, res, api) => this.getIssues(req, res, api)));
+        service.get<{ owner: string, name: string }>('/api/repo/:owner/:name/issues/timeline', (req, res) => this.getApi(req, res, ApiType.graph, (req, res, api) => this.getIssuesTimeline(req, res, api)));
         service.get<{ owner: string, name: string }>('/api/repo/:owner/:name/labels', (req, res) => this.getApi(req, res, ApiType.rest, (req, res, api) => this.getLabels(req, res, api)));
         service.get<{ owner: string, name: string }>('/api/repo/:owner/:name/tags', (req, res) => this.getApi(req, res, ApiType.rest, (req, res, api) => this.getTags(req, res, api)));
     }
@@ -43,6 +44,7 @@ class Github {
             case ApiType.rest:
                 const rest = new octokit({ auth: token });
                 (next as RestApiAcceptor<T>)(req, res, rest);
+                break;
             case ApiType.graph:
                 const graph = graphql.graphql.defaults({
                     headers: {
@@ -50,6 +52,7 @@ class Github {
                     }
                 });
                 (next as GraphApiAcceptor<T>)(req, res, graph);
+                break;
         }
     }
 
@@ -58,9 +61,9 @@ class Github {
         res.send(repos.data.map(r => ({ owner: r.owner.login, name: r.name })) as api.getReposResponse);
     }
 
-    private async getIssues(req: Request<{ owner: string, name: string, labels: string }>, res: Response, api: IGraphQL): Promise<void> {
+    private async getIssues(req: Request<{ owner: string, name: string }>, res: Response, api: IGraphQL): Promise<void> {
         const { owner, name } = req.params;
-        const { labels } = req.query;
+        const labels = req.query.labels as string;
         const decodedLabels = labels ? decodeURIComponent(labels) : undefined
 
         let queryString = `repo:${owner}/${name} is:open is:issue`;
@@ -78,6 +81,46 @@ class Github {
         `) as { search: { issueCount: number } };
 
         res.send({ count: search.issueCount } as api.getIssuesResponse);
+    }
+    
+    private async getIssuesTimeline(req: Request<{ owner: string, name: string }>, res: Response, api: IGraphQL): Promise<void> {
+        const { owner, name } = req.params;
+        const labels = req.query.labels as string;
+        const segments = Number(req.query.segments as string);
+        const start = new Date(req.query.start as string);
+        const end = new Date(req.query.end as string);
+
+        const step = Math.round((end.getTime() - start.getTime()) / segments);
+
+        const timeStamps: string[] = [];
+        for(let i = 0; i <= segments; i++) {
+            timeStamps.push(new Date(start.getTime() + (i*step)).toISOString().replace(/\.\d{3}\w$/, ''));
+        }
+
+        const decodedLabels = labels ? decodeURIComponent(labels) : undefined
+
+        let queryString = `repo:${owner}/${name} is:issue`;
+
+        if (decodedLabels) {
+            queryString += decodedLabels.split(',').reduce((p, l) => p + ` label:\\"${l}\\"`, '');
+        }
+
+        // we have to handle isnotclosed as a separate query
+        const response = await Promise.all(timeStamps.map(async time => {
+            const search = await api(`
+                query {
+                    closed: search(type:ISSUE, query:"${queryString} is:closed closed:>${time} created:<${time}") {
+                        issueCount
+                    }
+                    open: search(type:ISSUE, query:"${queryString} is:open created:<${time}") {
+                        issueCount
+                    }
+                }
+            `) as { closed: { issueCount: number }, open: { issueCount: number } };
+            return { time, count: search.closed.issueCount + search.open.issueCount };
+        }));
+
+        res.send(response as api.getIssuesTimelineResponse);
     }
 
     private async getLabels(req: Request<{ owner: string, name: string }>, res: Response, api: octokit): Promise<void> {

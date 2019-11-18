@@ -1,6 +1,6 @@
 import { h, Component, ComponentChild } from 'https://unpkg.com/preact?module';
 import { styles } from '../common/css/cssDecorator';
-import { Chart, Entry } from '../common/chart/chart'
+import { Chart, Entry, TimeLineEntry } from '../common/chart/chart'
 import { Dropdown, Item } from '../common/dropdown/dropdown';
 import { api } from '../../api';
 import { LabelList, Label } from '../labelList/labelList';
@@ -13,11 +13,12 @@ export interface IssueExplorerProps {
 export interface IssueExplorerState {
     repos: Array<{ owner: string; name: string }>;
     labels: Label[];
-    tags: { name: string; date: string }[];
+    tags: Array<{ x: string, label: string }>
     selectedRepo?: { owner: string; name: string };
     showTags?: boolean;
-    data: Entry[];
+    data: Entry[] | TimeLineEntry[];
     groups: Array<Array<Label>>;
+    timeline: boolean;
 }
 
 const allGroups = [[{ name: 'all', color: 'ffa500' }]];
@@ -32,7 +33,8 @@ export class IssueExplorer extends Component<IssueExplorerProps, IssueExplorerSt
             tags: [],
             data: [],
             groups: allGroups,
-            showTags: false
+            showTags: false,
+            timeline: false
         };
     }
 
@@ -48,35 +50,48 @@ export class IssueExplorer extends Component<IssueExplorerProps, IssueExplorerSt
         this.setState({ selectedRepo: { owner, name } });
         (async () => {
             const labels: api.getLabelsResponse = await (await fetch(`/api/repo/${owner}/${name}/labels`)).json();
-            this.setState({ labels });
+            const data = await this.updateIssues(this.state.groups, { owner, name }, this.state.timeline);
+            this.setState({ labels, data });
         })();
-        this.updateIssues(this.state.groups, { owner, name } );
     }
 
     labelGroupsChanged(groups: Array<Array<Label>>) {
         if (groups.length === 0 || groups[0].length === 0) {
             groups = allGroups
         }
-        this.setState({ groups });
-        if (this.state.selectedRepo) {
-            this.updateIssues(groups, this.state.selectedRepo);
-        }
+        (async () => {
+            const data = await this.updateIssues(groups, this.state.selectedRepo!, this.state.timeline);
+            this.setState({ groups, data });
+        })();
     }
 
-    async updateIssues(groups: Array<Array<Label>>, repo: { owner: string; name: string }): Promise<void> {
+    async updateIssues(groups: Array<Array<Label>>, repo: { owner: string; name: string }, timeline: boolean): Promise<Entry[] | TimeLineEntry[]> {
         const { owner, name } = repo;
-        const data: Entry[] = [];
-        await Promise.all(groups.map(async g => {
-            if (g.map(g => g.name).join('.') === 'all') {
-                const issues: api.getIssuesResponse = await (await fetch(`/api/repo/${owner}/${name}/issues`)).json();
-                data.push({ label: 'all', value: issues.count, color: g[0].color });
-            } else {
-                const labels = encodeURIComponent(g.map(g => g.name).join(','));
-                const issues: api.getIssuesResponse = await (await fetch(`/api/repo/${owner}/${name}/issues?labels=${labels}`)).json();
-                data.push({ label: g.map(g => g.name).join(','), value: issues.count, color: g[0].color });
-            }
-        }));
-        this.setState({ data });
+        if (timeline) {
+            const data = await Promise.all(groups.map(async g => {
+                if (g.map(g => g.name).join('.') === 'all') {
+                    const issues: api.getIssuesTimelineResponse = await (await fetch(`/api/repo/${owner}/${name}/issues/timeline?segments=50&start=${new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toString()}&end=${new Date(Date.now()).toString()}`)).json();
+                    return { label: 'all', values: issues.map(v => ({ x: v.time, y: v.count })), color: g[0].color };
+                } else {
+                    const labels = encodeURIComponent(g.map(g => g.name).join(','));
+                    const issues: api.getIssuesTimelineResponse = await (await fetch(`/api/repo/${owner}/${name}/issues/timeline?labels=${labels}&segments=50&start=${new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toString()}&end=${new Date(Date.now()).toString()}`)).json();
+                    return { label: g.map(g => g.name).join(','), values: issues.map(v => ({ x: v.time, y: v.count })), color: g[0].color };
+                }
+            }));
+            return data;
+        } else {
+            const data = await Promise.all(groups.map(async g => {
+                if (g.map(g => g.name).join('.') === 'all') {
+                    const issues: api.getIssuesResponse = await (await fetch(`/api/repo/${owner}/${name}/issues`)).json();
+                    return { label: 'all', value: issues.count, color: g[0].color };
+                } else {
+                    const labels = encodeURIComponent(g.map(g => g.name).join(','));
+                    const issues: api.getIssuesResponse = await (await fetch(`/api/repo/${owner}/${name}/issues?labels=${labels}`)).json();
+                    return { label: g.map(g => g.name).join(','), value: issues.count, color: g[0].color };
+                }
+            }));
+            return data;
+        }
     }
 
     showTags(doShow: boolean): void {
@@ -85,7 +100,7 @@ export class IssueExplorer extends Component<IssueExplorerProps, IssueExplorerSt
             (async () => {
                 const { owner, name } = this.state.selectedRepo!;
                 const tags: api.getTagsResponse = await (await fetch(`/api/repo/${owner}/${name}/tags`)).json();
-                this.setState({ tags });
+                this.setState({ tags: tags.map(v => ({ x: v.date, label: v.name })) });
             })();
         } else {
             this.setState({ tags: [] });
@@ -103,15 +118,22 @@ export class IssueExplorer extends Component<IssueExplorerProps, IssueExplorerSt
 
     }
 
+    onTimelineChange(doTimeline: boolean): void {
+        (async () => {
+            const data = await this.updateIssues(this.state.groups, this.state.selectedRepo!, doTimeline);
+            this.setState({ timeline: doTimeline, data });
+        })();
+    }
+
     render(): ComponentChild {
         return (
             <div class="issue-explorer">
                 <Dropdown items={this.state.repos.map(r => ({ name: `${r.owner}/${r.name}`, value: `${r.owner}/${r.name}` }))} onChange={e => this.repoSelected(e)} />
                 <input onKeyPress={e => this.onInputKeyPress(e)} />
+                <Checkbox onChange={e => this.onTimelineChange(e)} checked={this.state.timeline} name="Timeline" />
                 <Checkbox onChange={e => this.showTags(e)} checked={this.state.showTags} name="Show Releases" />
-                <LabelList labels={this.state.labels} onGroupChange={g => this.labelGroupsChanged(g)}/>
-                <LabelList labels={this.state.tags.map(t => ({ name: t.name + t.date, color: 'ffffff'}))} />
-                <Chart data={this.state.data}/>
+                <LabelList labels={this.state.labels} onGroupChange={g => this.labelGroupsChanged(g)} />
+                <Chart data={this.state.data} isTimeline={this.state.timeline} verticalMarkers={this.state.tags} />
             </div>
         );
     }
