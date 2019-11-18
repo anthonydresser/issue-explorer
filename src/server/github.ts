@@ -82,7 +82,7 @@ class Github {
 
         res.send({ count: search.issueCount } as api.getIssuesResponse);
     }
-    
+
     private async getIssuesTimeline(req: Request<{ owner: string, name: string }>, res: Response, api: IGraphQL): Promise<void> {
         const { owner, name } = req.params;
         const labels = req.query.labels as string;
@@ -93,8 +93,8 @@ class Github {
         const step = Math.round((end.getTime() - start.getTime()) / segments);
 
         const timeStamps: string[] = [];
-        for(let i = 0; i <= segments; i++) {
-            timeStamps.push(new Date(start.getTime() + (i*step)).toISOString().replace(/\.\d{3}\w$/, ''));
+        for (let i = 0; i <= segments; i++) {
+            timeStamps.push(new Date(start.getTime() + (i * step)).toISOString().replace(/\.\d{3}\w$/, ''));
         }
 
         const decodedLabels = labels ? decodeURIComponent(labels) : undefined
@@ -105,22 +105,7 @@ class Github {
             queryString += decodedLabels.split(',').reduce((p, l) => p + ` label:\\"${l}\\"`, '');
         }
 
-        // we have to handle isnotclosed as a separate query
-        const response = await Promise.all(timeStamps.map(async time => {
-            const search = await api(`
-                query {
-                    closed: search(type:ISSUE, query:"${queryString} is:closed closed:>${time} created:<${time}") {
-                        issueCount
-                    }
-                    open: search(type:ISSUE, query:"${queryString} is:open created:<${time}") {
-                        issueCount
-                    }
-                }
-            `) as { closed: { issueCount: number }, open: { issueCount: number } };
-            return { time, count: search.closed.issueCount + search.open.issueCount };
-        }));
-
-        res.send(response as api.getIssuesTimelineResponse);
+        res.send(await splitTimelineQuery(timeStamps, queryString, api));
     }
 
     private async getLabels(req: Request<{ owner: string, name: string }>, res: Response, api: octokit): Promise<void> {
@@ -134,6 +119,38 @@ class Github {
         const labels = await api.repos.listReleases({ owner, repo: name, per_page: 100 });
         res.send(labels.data.map(r => ({ name: r.name, date: r.published_at })) as api.getTagsResponse);
     }
+}
+
+async function splitTimelineQuery(timeStamps: Array<string>, queryString: string, api: IGraphQL): Promise<api.getIssuesTimelineResponse> {
+    const queryTimes: Array<Array<string>> = []
+    const step = 50;
+    let i = 0;
+    while ((i + 1) * step < timeStamps.length) {
+        queryTimes.push(timeStamps.slice(i * step, ((i + 1) * step) - 1));
+        i++;
+    }
+    if (i * step !== timeStamps.length - 1) {
+        queryTimes.push(timeStamps.slice(i * step, timeStamps.length - 1));
+    }
+
+    const responses = await Promise.all(queryTimes.map(async t => {
+        const query = `query {
+            ${t.map((time, i) => `
+                closed${i}: search(type:ISSUE, query:"${queryString} is:closed closed:>${time} created:<${time}") {
+                    issueCount
+                }
+                open${i}: search(type:ISSUE, query:"${queryString} is:open created:<${time}") {
+                    issueCount
+                }`)}
+            }
+        `;
+        const response = await api(query) as { [key: string]: { issueCount: number } };
+        return t.map((v, i) => {
+            return { time: v, count: response[`closed${i}`].issueCount + response[`open${i}`].issueCount };
+        });
+    }));
+
+    return responses.reduce((p, c) => p.concat(...c), []) as api.getIssuesTimelineResponse;
 }
 
 export function createGithub(server: Express): void {

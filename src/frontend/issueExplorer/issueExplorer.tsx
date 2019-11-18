@@ -70,11 +70,11 @@ export class IssueExplorer extends Component<IssueExplorerProps, IssueExplorerSt
         if (timeline) {
             const data = await Promise.all(groups.map(async g => {
                 if (g.map(g => g.name).join('.') === 'all') {
-                    const issues: api.getIssuesTimelineResponse = await (await fetch(`/api/repo/${owner}/${name}/issues/timeline?segments=50&start=${new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toString()}&end=${new Date(Date.now()).toString()}`)).json();
+                    const issues: api.getIssuesTimelineResponse = await (await fetch(`/api/repo/${owner}/${name}/issues/timeline?segments=500&start=${new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toString()}&end=${new Date(Date.now()).toString()}`)).json();
                     return { label: 'all', values: issues.map(v => ({ x: v.time, y: v.count })), color: g[0].color };
                 } else {
                     const labels = encodeURIComponent(g.map(g => g.name).join(','));
-                    const issues: api.getIssuesTimelineResponse = await (await fetch(`/api/repo/${owner}/${name}/issues/timeline?labels=${labels}&segments=50&start=${new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toString()}&end=${new Date(Date.now()).toString()}`)).json();
+                    const issues: api.getIssuesTimelineResponse = await (await fetch(`/api/repo/${owner}/${name}/issues/timeline?labels=${labels}&segments=500&start=${new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toString()}&end=${new Date(Date.now()).toString()}`)).json();
                     return { label: g.map(g => g.name).join(','), values: issues.map(v => ({ x: v.time, y: v.count })), color: g[0].color };
                 }
             }));
